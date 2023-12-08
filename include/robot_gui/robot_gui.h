@@ -15,7 +15,7 @@ public:
   RobotGUI()
       : vec_info({"Start1", "Start2", "Start2", "Start2", "Start2", "Start2",
                   "Start2", "Start2", "Start2", "Start2", "Start2"}),
-        linear_x(0), angular_z(0) {
+        linear_x(0), angular_z(0), x(10), y(10), z(10) {
     cout << "RobotGUI Constructor is called" << endl;
   };
   // destructor
@@ -27,7 +27,7 @@ public:
     int padding = 10;
 
     // init frame and window
-    init_UI_frame(800, 500);
+    init_UI_frame(800, 400);
     cvui::init(WINDOW_NAME);
 
     // while esc is not pressed
@@ -41,13 +41,22 @@ public:
       this->InfoUI(padding);
 
       // add padding
-      this->pos.y += 30;
+      //   this->pos.y += 30;
 
       // control section
       // pass
 
-      // velocity section
+      // add padding
+      this->pos.y += 30;
+
+      // Velocity section
       this->VelUI(padding);
+
+      // add padding
+      this->pos.y += 30;
+
+      // Odom Section
+      this->OdomUI(padding);
 
       // update ui and show window
       cvui::update();
@@ -74,9 +83,9 @@ private:
   float angular_z;
 
   //  - Robot Position
-  float x;
-  float y;
-  float z;
+  int x;
+  int y;
+  int z;
   // distance
   float dis;
 
@@ -115,6 +124,7 @@ private:
     }
   }
 
+  // Velocity Info
   void VelUI(int width_padding) {
     int single_window_width = (this->ui_width - width_padding * 3) / 2;
     int h = 45; // window title is 20, normal text height is 15
@@ -144,7 +154,47 @@ private:
                this->pos.x + text_start + width_padding + single_window_width,
                this->pos.y + title_height,
                float2String(this->linear_x) + " rod/sec", 0.4, 0xff0000);
+
+    // move pos.y down to bottom
+    this->pos.y += h;
   }
 
-  // Velocity Info
+  // Odom section
+  void OdomUI(int width_padding) {
+    int single_window_width = (this->ui_width - width_padding * 4) / 3;
+    int h = 100; // window title is 20, normal text height is 15
+
+    // text starting point
+    int title_height = 60;
+    int text_start = single_window_width - 60;
+    float text_size = 1.2;
+    // X
+    cvui::window(this->frame, this->pos.x, this->pos.y, single_window_width, h,
+                 "X");
+    // x value
+    cvui::text(this->frame, this->pos.x + text_start,
+               this->pos.y + title_height, to_string(this->x), text_size);
+
+    // Y
+    cvui::window(this->frame,
+                 this->pos.x + (single_window_width + width_padding),
+                 this->pos.y, single_window_width, h, "Y");
+    // y value
+    cvui::text(this->frame,
+               this->pos.x + text_start + (single_window_width + width_padding),
+               this->pos.y + title_height, to_string(this->y), text_size);
+
+    // Z
+    cvui::window(this->frame,
+                 this->pos.x + 2 * (single_window_width + width_padding),
+                 this->pos.y, single_window_width, h, "Z");
+    // z value
+    cvui::text(this->frame,
+               this->pos.x + text_start +
+                   2 * (single_window_width + width_padding),
+               this->pos.y + title_height, to_string(this->z), text_size);
+
+    // move pos.y down to bottom
+    this->pos.y += h;
+  }
 };
