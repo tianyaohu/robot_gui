@@ -2,6 +2,10 @@
 #include <ros/ros.h>
 #include <sstream>
 
+// include custome message
+#include "robot_info/TwoStrVec.h"
+#include "ros/node_handle.h"
+
 #define CVUI_IMPLEMENTATION
 #include "robot_gui/cvui.h"
 
@@ -13,13 +17,27 @@ class RobotGUI {
 public:
   // constructor
   RobotGUI()
-      : vec_info({"Start1", "Start2", "Start2", "Start2", "Start2", "Start2",
-                  "Start2", "Start2", "Start2", "Start2", "Start2"}),
+      : vec_info({"Info1: Not inited", "Info2: Not inited", "Info3: Not inited",
+                  "Info4: Not inited"}),
         linear_x(0), angular_z(0), x(10), y(10), z(10) {
     cout << "RobotGUI Constructor is called" << endl;
   };
   // destructor
   ~RobotGUI() { cout << "RobotGUI Destructor is called" << endl; };
+
+  void initInfoSub(ros::NodeHandle &node, const string info_topic) {
+    cout << "within info sub" << endl;
+    this->info_topic = info_topic;
+    // init info sub
+    this->info_sub_ =
+        node.subscribe(this->info_topic, 1, &RobotGUI::InfoCallback, this);
+  };
+
+  void InfoCallback(const robot_info::TwoStrVec::ConstPtr &msg) {
+    // storing the msg vec with m
+    this->StoreMsgVec(msg->vec1, msg->vec2);
+    cout << "within info callback" << endl;
+  }
 
   void DisplayUI() {
     cout << "DisplayUI called" << endl;
@@ -68,8 +86,9 @@ public:
       // update ui and show window
       cvui::update();
       cv::imshow(WINDOW_NAME, this->frame);
-
       cout << "within while loop" << endl;
+
+      ros::spinOnce();
     }
     cout << "DisplayUI termminated" << endl;
   }
@@ -82,6 +101,8 @@ private:
   ros::Publisher vel_pub_;
 
   // UI contents:
+  // string info topic
+  string info_topic;
   // - general info
   vector<string> vec_info;
 
@@ -102,7 +123,19 @@ private:
   cv::Mat frame;
   // init point for ui alignment
   cv::Point pos;
-  // section dimensions
+
+  // private functions
+  void StoreMsgVec(const vector<string> &header_vec,
+                   const vector<string> &value_vec) {
+    // clear the old info
+    this->vec_info.clear();
+
+    for (int i = 0; i < header_vec.size(); i++) {
+      string temp = header_vec[i] + ":   " + value_vec[i];
+      this->vec_info.push_back(temp);
+      cout << "Within StoreMsgVec: " << temp << endl;
+    }
+  };
 
   // init UI frame
   void init_UI_frame(int ui_height, int ui_width) {
