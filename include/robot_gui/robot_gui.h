@@ -24,7 +24,8 @@ public:
   void DisplayUI() {
     cout << "DisplayUI called" << endl;
     // init a padding paramter
-    int padding = 10;
+    int y_padding = 15;
+    int x_padding = 5;
 
     // init frame and window
     init_UI_frame(800, 400);
@@ -33,30 +34,36 @@ public:
     // while esc is not pressed
     while (cv::waitKey(20) != 27) {
       // reset pos
-      this->pos = cv::Point(padding, padding);
+      this->pos = cv::Point(x_padding, y_padding);
       // Fill the frame with a nice color
       frame = cv::Scalar(49, 52, 49);
 
       // info ui
-      this->InfoUI(padding);
+      this->InfoUI(y_padding);
 
-      // add padding
-      //   this->pos.y += 30;
+      // add y_padding
+      this->pos.y += y_padding;
 
       // control section
-      // pass
+      this->ControlUI(y_padding);
 
-      // add padding
-      this->pos.y += 30;
+      // add y_padding
+      this->pos.y += y_padding;
 
       // Velocity section
-      this->VelUI(padding);
+      this->VelUI(y_padding);
 
-      // add padding
-      this->pos.y += 30;
+      // add y_padding
+      this->pos.y += y_padding;
 
       // Odom Section
-      this->OdomUI(padding);
+      this->OdomUI(y_padding);
+
+      // add y_padding
+      this->pos.y += y_padding;
+
+      // Distance Button
+      this->DistanceUI(y_padding);
 
       // update ui and show window
       cvui::update();
@@ -122,6 +129,45 @@ private:
       this->pos.y += line_height; // 15 is standard text height
       cvui::text(this->frame, this->pos.x + x_offset, this->pos.y, row);
     }
+    this->pos.y += line_height;
+  }
+
+  void ControlUI(int width_padding) {
+    cout << " this is within Control UI" << endl;
+    // init button width and height
+    int button_width = this->ui_width / 3 - width_padding;
+    int button_height = this->ui_height / (3 * 6);
+    // forward
+    if (cvui::button(frame, this->pos.x + button_width + width_padding,
+                     this->pos.y, button_width, button_height, "Forward")) {
+      cout << "forward is pressed" << endl;
+    }
+    // increment y
+    this->pos.y += button_height + width_padding;
+    // left + Stop + Right
+    if (cvui::button(frame, this->pos.x, this->pos.y, button_width,
+                     button_height, "Left")) {
+      cout << "Left is pressed" << endl;
+    }
+
+    if (cvui::button(frame, this->pos.x + button_width + width_padding,
+                     this->pos.y, button_width, button_height, "Stop")) {
+      cout << "Stop is pressed" << endl;
+    }
+
+    if (cvui::button(frame, this->pos.x + 2 * (button_width + width_padding),
+                     this->pos.y, button_width, button_height, "Right")) {
+      cout << "Right is pressed" << endl;
+    }
+    // increment y
+    this->pos.y += button_height + width_padding;
+    // backward
+    if (cvui::button(frame, this->pos.x + button_width + width_padding,
+                     this->pos.y, button_width, button_height, "Backward")) {
+      cout << "Backward is pressed" << endl;
+    }
+    // increment y
+    this->pos.y += button_height;
   }
 
   // Velocity Info
@@ -196,5 +242,25 @@ private:
 
     // move pos.y down to bottom
     this->pos.y += h;
+  }
+
+  // Distance Button
+  void DistanceUI(int padding) {
+    int button_width = (this->ui_width - padding * 3) / 3,
+        button_height = this->ui_height / 7;
+    if (cvui::button(this->frame, this->pos.x, this->pos.y, button_width,
+                     button_height, "Call")) {
+      cout << "Distance button pressed (Counter for now)" << endl;
+      this->dis += 1;
+      // TBD: call distance tracker service then update the distance traveled;
+    }
+
+    // render window to show distance
+    cvui::window(this->frame, this->pos.x + padding + button_width, this->pos.y,
+                 (this->ui_width - padding * 3) - button_width, button_height,
+                 "Distance in meters");
+    // display distance number
+    cvui::text(this->frame, this->pos.x + padding + button_width,
+               this->pos.y + button_height - 50, to_string(this->dis), 1.2);
   }
 };
