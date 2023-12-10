@@ -5,6 +5,7 @@
 // include custome message
 #include "robot_info/TwoStrVec.h"
 #include "ros/node_handle.h"
+#include <geometry_msgs/Twist.h>
 
 #define CVUI_IMPLEMENTATION
 #include "robot_gui/cvui.h"
@@ -33,10 +34,10 @@ public:
         node.subscribe(this->info_topic, 1, &RobotGUI::InfoCallback, this);
   };
 
-  void InfoCallback(const robot_info::TwoStrVec::ConstPtr &msg) {
-    // storing the msg vec with m
-    this->StoreMsgVec(msg->vec1, msg->vec2);
-    cout << "within info callback" << endl;
+  // can be templated to generalized to other publishers
+  void initVelControl(ros::NodeHandle &node, const string topic2pub) {
+    // advertize
+    this->vel_pub_ = node.advertise<geometry_msgs::Twist>(topic2pub, 10);
   }
 
   void DisplayUI() {
@@ -65,6 +66,9 @@ public:
       // control section
       this->ControlUI(y_padding);
 
+      // publish Twist
+      vel_pub_.publish(msg_vel);
+
       // add y_padding
       this->pos.y += y_padding;
 
@@ -86,7 +90,6 @@ public:
       // update ui and show window
       cvui::update();
       cv::imshow(WINDOW_NAME, this->frame);
-      cout << "within while loop" << endl;
 
       ros::spinOnce();
     }
@@ -106,6 +109,9 @@ private:
   // - general info
   vector<string> vec_info;
 
+  // Twist msg
+  geometry_msgs::Twist msg_vel;
+
   // velocity linear x
   float linear_x;
   float angular_z;
@@ -124,6 +130,11 @@ private:
   // init point for ui alignment
   cv::Point pos;
 
+  void InfoCallback(const robot_info::TwoStrVec::ConstPtr &msg) {
+    // storing the msg vec with m
+    this->StoreMsgVec(msg->vec1, msg->vec2);
+  }
+
   // private functions
   void StoreMsgVec(const vector<string> &header_vec,
                    const vector<string> &value_vec) {
@@ -133,7 +144,6 @@ private:
     for (int i = 0; i < header_vec.size(); i++) {
       string temp = header_vec[i] + ":   " + value_vec[i];
       this->vec_info.push_back(temp);
-      cout << "Within StoreMsgVec: " << temp << endl;
     }
   };
 
@@ -166,14 +176,17 @@ private:
   }
 
   void ControlUI(int width_padding) {
-    cout << " this is within Control UI" << endl;
     // init button width and height
     int button_width = this->ui_width / 3 - width_padding;
     int button_height = this->ui_height / (3 * 6);
+    // vel step
+    float vel_step = 0.2;
     // forward
     if (cvui::button(frame, this->pos.x + button_width + width_padding,
                      this->pos.y, button_width, button_height, "Forward")) {
       cout << "forward is pressed" << endl;
+      this->msg_vel.linear.x += vel_step;
+      cout << msg_vel << endl;
     }
     // increment y
     this->pos.y += button_height + width_padding;
@@ -181,16 +194,23 @@ private:
     if (cvui::button(frame, this->pos.x, this->pos.y, button_width,
                      button_height, "Left")) {
       cout << "Left is pressed" << endl;
+      this->msg_vel.angular.z += vel_step;
+      cout << msg_vel << endl;
     }
 
     if (cvui::button(frame, this->pos.x + button_width + width_padding,
                      this->pos.y, button_width, button_height, "Stop")) {
       cout << "Stop is pressed" << endl;
+      this->msg_vel.angular.z = 0;
+      this->msg_vel.linear.x = 0;
+      cout << msg_vel << endl;
     }
 
     if (cvui::button(frame, this->pos.x + 2 * (button_width + width_padding),
                      this->pos.y, button_width, button_height, "Right")) {
       cout << "Right is pressed" << endl;
+      this->msg_vel.angular.z -= vel_step;
+      cout << msg_vel << endl;
     }
     // increment y
     this->pos.y += button_height + width_padding;
@@ -198,6 +218,8 @@ private:
     if (cvui::button(frame, this->pos.x + button_width + width_padding,
                      this->pos.y, button_width, button_height, "Backward")) {
       cout << "Backward is pressed" << endl;
+      this->msg_vel.linear.x -= vel_step;
+      cout << msg_vel << endl;
     }
     // increment y
     this->pos.y += button_height;
@@ -283,7 +305,6 @@ private:
         button_height = this->ui_height / 7;
     if (cvui::button(this->frame, this->pos.x, this->pos.y, button_width,
                      button_height, "Call")) {
-      cout << "Distance button pressed (Counter for now)" << endl;
       this->dis += 1;
       // TBD: call distance tracker service then update the distance traveled;
     }
