@@ -5,8 +5,10 @@
 // include custome message
 #include "robot_info/TwoStrVec.h"
 #include "ros/node_handle.h"
+#include "ros/service_client.h"
 #include <geometry_msgs/Twist.h>
 #include <nav_msgs/Odometry.h>
+#include <std_srvs/Trigger.h>
 
 #define CVUI_IMPLEMENTATION
 #include "robot_gui/cvui.h"
@@ -21,7 +23,7 @@ public:
   RobotGUI()
       : vec_info({"Info1: Not inited", "Info2: Not inited", "Info3: Not inited",
                   "Info4: Not inited"}),
-        x(10), y(10), z(10) {
+        x(-1), y(-1), z(-1) {
     cout << "RobotGUI Constructor is called" << endl;
   };
   // destructor
@@ -46,6 +48,11 @@ public:
     cout << "Started Odom Sub" << endl;
     this->odom_sub_ =
         node.subscribe(odom_topic, 1, &RobotGUI::OdomCallback, this);
+  }
+
+  void initDistanceClient(ros::NodeHandle &node, const string distance_topic) {
+    // init distance client
+    this->dis_client_ = node.serviceClient<std_srvs::Trigger>(distance_topic);
   }
 
   void OdomCallback(const nav_msgs::Odometry::ConstPtr &msg) {
@@ -117,6 +124,7 @@ private:
   ros::Subscriber info_sub_;
   ros::Publisher vel_pub_;
   ros::Subscriber odom_sub_;
+  ros::ServiceClient dis_client_;
 
   // UI contents:
   // string info topic
@@ -128,11 +136,11 @@ private:
   geometry_msgs::Twist msg_vel;
 
   //  - Robot Position
-  int x;
-  int y;
-  int z;
-  // distance
-  float dis;
+  float x;
+  float y;
+  float z;
+  // distance response
+  string response;
 
   // UI frame
   int ui_height;
@@ -276,33 +284,35 @@ private:
 
     // text starting point
     int title_height = 60;
-    int text_start = single_window_width - 60;
-    float text_size = 1.2;
+    int text_start = 0;
+    float text_size = 1;
     // X
     cvui::window(this->frame, this->pos.x, this->pos.y, single_window_width, h,
                  "X");
     // x value
-    cvui::text(this->frame, this->pos.x + text_start,
-               this->pos.y + title_height, to_string(this->x), text_size);
+    cvui::printf(this->frame, this->pos.x + text_start,
+                 this->pos.y + title_height, text_size, 0x00ff00, "%.2f",
+                 this->x);
 
     // Y
     cvui::window(this->frame,
                  this->pos.x + (single_window_width + width_padding),
                  this->pos.y, single_window_width, h, "Y");
     // y value
-    cvui::text(this->frame,
-               this->pos.x + text_start + (single_window_width + width_padding),
-               this->pos.y + title_height, to_string(this->y), text_size);
+    cvui::printf(
+        this->frame,
+        this->pos.x + text_start + (single_window_width + width_padding),
+        this->pos.y + title_height, text_size, 0x00ff00, "%.2f", this->x);
 
     // Z
     cvui::window(this->frame,
                  this->pos.x + 2 * (single_window_width + width_padding),
                  this->pos.y, single_window_width, h, "Z");
     // z value
-    cvui::text(this->frame,
-               this->pos.x + text_start +
-                   2 * (single_window_width + width_padding),
-               this->pos.y + title_height, to_string(this->z), text_size);
+    cvui::printf(
+        this->frame,
+        this->pos.x + text_start + 2 * (single_window_width + width_padding),
+        this->pos.y + title_height, text_size, 0x00ff00, "%.2f", this->x);
 
     // move pos.y down to bottom
     this->pos.y += h;
@@ -314,8 +324,13 @@ private:
         button_height = this->ui_height / 7;
     if (cvui::button(this->frame, this->pos.x, this->pos.y, button_width,
                      button_height, "Call")) {
-      this->dis += 1;
-      // TBD: call distance tracker service then update the distance traveled;
+      // once pressed init a trigger message
+      std_srvs::Trigger msg_get;
+      if (dis_client_.call(msg_get)) {
+        response = msg_get.response.message;
+      } else {
+        response = "Distance Service Request Failed; Please try again.";
+      }
     }
 
     // render window to show distance
@@ -324,6 +339,6 @@ private:
                  "Distance in meters");
     // display distance number
     cvui::text(this->frame, this->pos.x + padding + button_width,
-               this->pos.y + button_height - 50, to_string(this->dis), 1.2);
+               this->pos.y + button_height - 50, response, 0.4);
   }
 };
