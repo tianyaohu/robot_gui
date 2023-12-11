@@ -6,6 +6,7 @@
 #include "robot_info/TwoStrVec.h"
 #include "ros/node_handle.h"
 #include <geometry_msgs/Twist.h>
+#include <nav_msgs/Odometry.h>
 
 #define CVUI_IMPLEMENTATION
 #include "robot_gui/cvui.h"
@@ -20,7 +21,7 @@ public:
   RobotGUI()
       : vec_info({"Info1: Not inited", "Info2: Not inited", "Info3: Not inited",
                   "Info4: Not inited"}),
-        linear_x(0), angular_z(0), x(10), y(10), z(10) {
+        x(10), y(10), z(10) {
     cout << "RobotGUI Constructor is called" << endl;
   };
   // destructor
@@ -38,6 +39,20 @@ public:
   void initVelControl(ros::NodeHandle &node, const string topic2pub) {
     // advertize
     this->vel_pub_ = node.advertise<geometry_msgs::Twist>(topic2pub, 10);
+  }
+
+  // init odom sub
+  void initOdomSub(ros::NodeHandle &node, const string odom_topic) {
+    cout << "Started Odom Sub" << endl;
+    this->odom_sub_ =
+        node.subscribe(odom_topic, 1, &RobotGUI::OdomCallback, this);
+  }
+
+  void OdomCallback(const nav_msgs::Odometry::ConstPtr &msg) {
+    // update position info
+    this->x = msg->pose.pose.position.x;
+    this->y = msg->pose.pose.position.y;
+    this->z = msg->pose.pose.position.z;
   }
 
   void DisplayUI() {
@@ -66,9 +81,6 @@ public:
       // control section
       this->ControlUI(y_padding);
 
-      // publish Twist
-      vel_pub_.publish(msg_vel);
-
       // add y_padding
       this->pos.y += y_padding;
 
@@ -91,6 +103,9 @@ public:
       cvui::update();
       cv::imshow(WINDOW_NAME, this->frame);
 
+      // publish Twist
+      vel_pub_.publish(msg_vel);
+
       ros::spinOnce();
     }
     cout << "DisplayUI termminated" << endl;
@@ -100,8 +115,8 @@ private:
   ros::NodeHandle *m_ros_node_object;
 
   ros::Subscriber info_sub_;
-  ros::Subscriber odom_sub_;
   ros::Publisher vel_pub_;
+  ros::Subscriber odom_sub_;
 
   // UI contents:
   // string info topic
@@ -111,10 +126,6 @@ private:
 
   // Twist msg
   geometry_msgs::Twist msg_vel;
-
-  // velocity linear x
-  float linear_x;
-  float angular_z;
 
   //  - Robot Position
   int x;
@@ -181,12 +192,13 @@ private:
     int button_height = this->ui_height / (3 * 6);
     // vel step
     float vel_step = 0.2;
+
     // forward
     if (cvui::button(frame, this->pos.x + button_width + width_padding,
                      this->pos.y, button_width, button_height, "Forward")) {
       cout << "forward is pressed" << endl;
       this->msg_vel.linear.x += vel_step;
-      cout << msg_vel << endl;
+      cout << msg_vel.linear.x << endl;
     }
     // increment y
     this->pos.y += button_height + width_padding;
@@ -195,7 +207,7 @@ private:
                      button_height, "Left")) {
       cout << "Left is pressed" << endl;
       this->msg_vel.angular.z += vel_step;
-      cout << msg_vel << endl;
+      cout << msg_vel.angular.z << endl;
     }
 
     if (cvui::button(frame, this->pos.x + button_width + width_padding,
@@ -203,14 +215,16 @@ private:
       cout << "Stop is pressed" << endl;
       this->msg_vel.angular.z = 0;
       this->msg_vel.linear.x = 0;
-      cout << msg_vel << endl;
+      cout << msg_vel.linear.x << endl;
+
+      cout << msg_vel.angular.z << endl;
     }
 
     if (cvui::button(frame, this->pos.x + 2 * (button_width + width_padding),
                      this->pos.y, button_width, button_height, "Right")) {
       cout << "Right is pressed" << endl;
       this->msg_vel.angular.z -= vel_step;
-      cout << msg_vel << endl;
+      cout << msg_vel.angular.z << endl;
     }
     // increment y
     this->pos.y += button_height + width_padding;
@@ -219,7 +233,7 @@ private:
                      this->pos.y, button_width, button_height, "Backward")) {
       cout << "Backward is pressed" << endl;
       this->msg_vel.linear.x -= vel_step;
-      cout << msg_vel << endl;
+      cout << msg_vel.linear.x << endl;
     }
     // increment y
     this->pos.y += button_height;
@@ -234,27 +248,22 @@ private:
     int title_height = 25;
     int text_start = single_window_width / 3;
 
-    // convert a floating number to string with 2 decimal precision rounding
-    auto float2String = [](float f) {
-      std::ostringstream oss;
-      oss << std::fixed << std::setprecision(2) << f;
-      return oss.str();
-    };
     // linear vel window
     cvui::window(this->frame, this->pos.x, this->pos.y, single_window_width, h,
                  "Linear velocity:");
+
     // fill linear value to window
-    cvui::text(this->frame, this->pos.x + text_start,
-               this->pos.y + title_height,
-               float2String(this->linear_x) + " m/sec", 0.4, 0xff0000);
+    cvui::printf(this->frame, this->pos.x + text_start,
+                 this->pos.y + title_height, 0.4, 0xff0000, "%.2f",
+                 this->msg_vel.linear.x);
 
     // angular vel window
     cvui::window(this->frame, this->pos.x + single_window_width + width_padding,
                  this->pos.y, single_window_width, h, "Angular velocity:");
-    cvui::text(this->frame,
-               this->pos.x + text_start + width_padding + single_window_width,
-               this->pos.y + title_height,
-               float2String(this->linear_x) + " rod/sec", 0.4, 0xff0000);
+    cvui::printf(this->frame,
+                 this->pos.x + text_start + width_padding + single_window_width,
+                 this->pos.y + title_height, 0.4, 0xff0000, "%.2f",
+                 this->msg_vel.angular.z);
 
     // move pos.y down to bottom
     this->pos.y += h;
