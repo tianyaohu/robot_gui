@@ -33,7 +33,12 @@ include
 )
 
 # add_library(robot_gui_lib src/robot_gui.cpp)
-add_executable(window_node src/window_example.cpp)
+# add_executable(window_node src/window_example.cpp)
+# target_link_libraries(window_node
+#   ${catkin_LIBRARIES}
+#   ${OpenCV_LIBRARIES}
+# )
+
 add_executable(ui_node src/robot_gui.cpp)
 
 target_link_libraries(ui_node
@@ -41,7 +46,3 @@ target_link_libraries(ui_node
   ${OpenCV_LIBRARIES}
 )
 
-target_link_libraries(window_node
-  ${catkin_LIBRARIES}
-  ${OpenCV_LIBRARIES}
-)

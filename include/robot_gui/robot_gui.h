@@ -329,7 +329,7 @@ private:
       if (dis_client_.call(msg_get)) {
         response = msg_get.response.message;
       } else {
-        response = "Distance Service Request Failed; Please try again.";
+        response = "Distance Service Request Failed";
       }
     }
 
